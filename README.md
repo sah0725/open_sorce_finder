@@ -31,11 +31,4 @@ OPENROUTER_API_KEY=your_openrouter_key
 GITHUB_TOKEN=your_github_pat
 ```
 
-## Screenshots
-![screenshot](docs/screenshot.png)
 
-## License
-MIT
-
----
-Built with ❤️ for FutureStack'25 Hackathon.
