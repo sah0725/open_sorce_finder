@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GSoC Contributor Compass</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>GSoC Contributor Compass</h1>
+            <p>Your AI guide to finding the perfect first open-source contribution.</p>
+        </header>
+
+        <main>
+            <div class="input-section">
+                <h2>Select Your Languages</h2>
+                <div class="language-selector">
+                    <button class="language-btn" data-lang="Python">Python</button>
+                    <button class="language-btn" data-lang="JavaScript">JavaScript</button>
+                    <button class="language-btn" data-lang="Go">Go</button>
+                    <button class="language-btn" data-lang="Rust">Rust</button>
+                    <button class="language-btn" data-lang="Java">Java</button>
+                </div>
+                <button id="find-btn">Find Issues</button>
+            </div>
+
+            <div id="results-section" class="results-section">
+                <h2>Recommended Issues</h2>
+                <div id="loading" class="loading" style="display: none;">
+                    <div class="spinner"></div>
+                    <p>AI Agent is searching GitHub...</p>
+                </div>
+                <div id="issues-list"></div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const langButtons = document.querySelectorAll('.language-btn');
+        const findBtn = document.getElementById('find-btn');
+        const issuesList = document.getElementById('issues-list');
+        const loadingIndicator = document.getElementById('loading');
+        
+        const selectedLanguages = new Set();
+
+        langButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                button.classList.toggle('selected');
+                const lang = button.getAttribute('data-lang');
+                if (selectedLanguages.has(lang)) {
+                    selectedLanguages.delete(lang);
+                } else {
+                    selectedLanguages.add(lang);
+                }
+            });
+        });
+
+        findBtn.addEventListener('click', () => {
+            if (selectedLanguages.size === 0) {
+                alert('Please select at least one language.');
+                return;
+            }
+
+            issuesList.innerHTML = '';
+            loadingIndicator.style.display = 'block';
+
+            fetch('/find-issues', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ languages: Array.from(selectedLanguages) }),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok ' + response.statusText);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Received data:', data); // Debugging line
+                displayIssues(data);
+            })
+            .catch(error => {
+                console.error('Error fetching issues:', error);
+                issuesList.innerHTML = '<p class="error">Could not fetch issues. Please try again later.</p>';
+            })
+            .finally(() => {
+                loadingIndicator.style.display = 'none';
+            });
+        });
+
+        function displayIssues(issues) {
+            if (issues.length === 0) {
+                issuesList.innerHTML = '<p>No suitable issues found at the moment. Try again later!</p>';
+                return;
+            }
+
+            issues.forEach(issue => {
+                const issueCard = document.createElement('div');
+                issueCard.className = `issue-card ${issue.analysis.classification.toLowerCase()}`;
+                
+                let classificationText = issue.analysis.classification === 'Good' ? 'Good First Issue' : 'Might Be Tricky';
+
+                const tagsHtml = issue.labels.map(label => `<span class="tag">${label}</span>`).join('');
+                const updatedAt = new Date(issue.updated_at).toLocaleDateString();
+
+                issueCard.innerHTML = `
+                    <div class="card-header">
+                        <h3><a href="${issue.url}" target="_blank">${issue.title}</a></h3>
+                        <p class="repo-name">${issue.repo_name} (⭐ ${issue.stars})</p>
+                    </div>
+                    <p class="classification">${classificationText}</p>
+                    <p>${issue.analysis.summary}</p>
+                    <div class="card-footer">
+                        <div class="tags">${tagsHtml}</div>
+                        <p class="updated-at">Last updated: ${updatedAt}</p>
+                    </div>
+                `;
+                issuesList.appendChild(issueCard);
+            });
+        }
+    </script>
+</body>
+</html>
